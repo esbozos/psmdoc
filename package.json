@@ -2,9 +2,13 @@
   "name": "@prioritysupport.mobi/psmdoc",
   "version": "1.0.0",
   "description": "",
+  "type": "module",
   "main": "src/index.js",
   "scripts": {
-    "test": "test"
+    "build": "tsc -p tsconfig.json && tsc -p tsconfig-cjs.json",
+    "prepublish": "npm run build",
+    "test": "test",
+    "parse": "node src/index.ts"
   },
   "repository": {
     "type": "git",
@@ -21,5 +25,13 @@
   "bugs": {
     "url": "https://github.com/esbozos/psmdoc/issues"
   },
-  "homepage": "https://github.com/esbozos/psmdoc#readme"
+  "homepage": "https://github.com/esbozos/psmdoc#readme",
+  "dependencies": {
+    "@types/node": "^17.0.13",
+    "winston": "^3.13.0"
+  },
+  "devDependencies": {
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.5"
+  }
 }
