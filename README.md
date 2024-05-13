@@ -194,6 +194,23 @@ External links are lines that start with #EL followed by the link text and the U
 #EL https://www.google.com Google target="_blank"
 ```
 
+##### Inline links
+
+Inline links inside other blocks (text, headings, lists, etc) are added in new lines with the following syntax:
+
+```markdown
+
+This is a link inside a text block to
+#EL https://www.google.com Google target="_blank"
+ main page.
+
+- Item 1
+- Item 2 link to
+#EL https://www.google.com Google target="_blank"
+page.
+- Item 3
+```
+
 #### Images
 
 Images are lines that start with #IMG followed by the image URL and the alt text.

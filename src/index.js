@@ -229,13 +229,7 @@ files.forEach((file) => {
           </div>
         </div>
 
-        <div class="psm-row">
-          <div class="psm-sidebar">
-            <h2>Menu</h2>
-            <ul>
-              ${menuItemsHtml}
-            </ul>
-          </div>
+        <div class="psm-row">          
           <div class="psm-content">
            
                           `);
@@ -243,13 +237,20 @@ files.forEach((file) => {
   html.push(`${htmlFile}`);
   html.push(psmdocParser(footer));
   html.push(`
-  </div>
-  </main>
-  <footer>
-    <p>&copy; ${site.author} ${new Date().getFullYear()}</p>
-  </footer>
-  </body>
-  <script src="../js/psmdoc.js"></script>
+          </div>
+          <div class="psm-sidebar">
+            <h2>Menu</h2>
+            <ul>
+              ${menuItemsHtml}
+            </ul>
+          </div>
+        </div>        
+      </main>
+      <footer>
+        <p>&copy; ${rootSite.title} ${new Date().getFullYear()}</p>
+      </footer>
+    </body>
+    <script src="../js/psmdoc.js"></script>
   </html>`);
 
   // create the html file in the output folder with the same name as the .psmdoc file
