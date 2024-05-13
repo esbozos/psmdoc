@@ -1,7 +1,7 @@
 {
   "name": "@prioritysupport.mobi/psmdoc",
-  "version": "1.0.0",
-  "description": "",
+  "version": "1.0.1",
+  "description": "Generate documents, websites, mobile apps (offline), and PDFs from psmdoc structured files, adding support for multiple versions and languages to keep them updated and maintained from a single source. (DEVELOPMENT STATUS).",
   "type": "module", 
   "main": "src/index.js",
   "bin": {

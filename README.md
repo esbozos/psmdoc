@@ -24,10 +24,10 @@ Priority support provide a easy versioned documentation system to be accessed an
 
 - Versioned documentation
 - Easy to use
-- Mobile friendly
-- Desktop friendly
-- Easy to maintain
-- Easy to deploy
+- Mobile friendly, (Generate mobile app to read documentation offline)
+- Desktop friendly (Generate desktop app to read documentation offline)
+- Easy to maintain and update
+- Easy to deploy and share
 
 ## How to use
 
@@ -35,10 +35,10 @@ Create a new folder for your documentation and add a MyPsmDoc.json file with the
 
 ```json
 {
-    "title": "Gestión Ciudad | Software de Gestión de Municipial",
-    "description": "Gestión Ciudad es un software de gestión de municipios que permite a los ciudadanos realizar trámites y consultas de forma online.",
-    "keywords": "gestión ciudad, software de gestión de municipios, trámites online, consultas online",
-    "author": "Gestión Ciudad | Norman Torres",
+    "title": "My Documentation",
+    "description": "This is a sample documentation",
+    "keywords": "documentation, sample, example",
+    "author": "John Doe",
     "robots": "index, follow",
     "auto-index": "true",
     "font": "https://fonts.googleapis.com/css?family=Roboto:400,700&display=swap",
@@ -50,8 +50,8 @@ Create a new folder for your documentation and add a MyPsmDoc.json file with the
         "line-height": "1.5",
         "text-align": "left"        
     },
-    "languages": ["es", "en"],
-    "version": "3.2.0"
+    "languages": ["en", "fr", "de"],
+    "version": "1.0.0"
 }
 ```
 
@@ -248,6 +248,35 @@ Set document attributes in the header of the file. If the first line starts with
 ## title="Introduction to my documentation" label="Introduction"
 
 ```	
+
+
+# Installation
+
+## Requirements
+
+- Node.js
+- NPM
+
+## Install
+
+```bash
+npm install -g @prioritysupport.mobi/psmdoc
+```
+
+# Usage
+
+```bash
+
+psmdoc mydoc_settings.json
+
+```
+
+# License
+
+MIT
+
+
+
 
 
 
