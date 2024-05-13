@@ -1,33 +1,27 @@
+#!/usr/bin/env node
 // this package is used to parse and create html files from .psmdoc files given from arguments in the command line
 // @ts-check
 
+// provide import outside of the module
+
 import fs from "fs";
 import path from "path";
-import logger from "./logger.ts";
+import logger from "./logger.js";
 import psmdocParser from "./psmdoc_parser.js";
 
-interface Site {
-  title: string;
-  description: string;
-  keywords: string;
-  author: string;
-  robots: string;
-  autoIndex: string;
-  font: string;
-  style: {
-    background: string;
-    color: string;
-    "font-family": string;
-    "font-size": string;
-    "line-height": string;
-    "text-align": string;
-  };
-  languages: string[];
-  version: string;
-}
+
 
 const args = process.argv.slice(2);
+
+console.log(args);
+
 const file = args[0];
+
+if(!file) {
+  logger.error("No file given, please provide the json file with the structure of the site and the .psmdoc files to create the html files");
+  process.exit(1);
+}
+
 let output = args[1];
 
 if (!output) {
@@ -43,8 +37,8 @@ if (!file) {
 }
 
 // load json file
-let site: Site;
-let rootSite: Site;
+let site ={};
+let rootSite = {};
 try {
   site = JSON.parse(fs.readFileSync(file, "utf8"));
   rootSite = JSON.parse(fs.readFileSync(file, "utf8"));
@@ -56,18 +50,21 @@ try {
 const root = path.dirname(file);
 
 // load all .psmdoc file recursively
-let files: string[] = [];
-let header: string = "";
-let footer: string = "";
-let sidebar: string = "";
-let menu: string = "";
-let menuItems: string = "";
-let menuItemsMobile: string = "";
+let files = [];
+let header = "";
+let footer = "";
 
-const loadFiles = (dir: string) => {
+/**
+ * Recursively loads files from the specified directory and populates the files array.
+ * If a file named "header.psmdoc" is found, it is stored in the header variable.
+ * If a file named "footer.psmdoc" is found, it is stored in the footer variable.
+ *
+ * @param {string} dir - The directory to load files from.
+ */
+const loadFiles = (dir) => {
   logger.info(`Loading files from ${dir}`);
   const list = fs.readdirSync(dir);
-  list.forEach((file: string) => {
+  list.forEach((file) => {
     const filePath = path.join(dir, file);
     const stat = fs.statSync(filePath);
     if (stat && stat.isDirectory()) {
@@ -88,12 +85,8 @@ const loadFiles = (dir: string) => {
   });
 };
 
-let headerHtml = "";
-if (header) {
-}
 logger.info(`Loading files from ${root}`);
 loadFiles(root);
-let menuItemsHtml = "";
 
 // copy css/psmdoc.css to output folder
 var __dirname = path.resolve();
@@ -107,7 +100,7 @@ const jsOutput = path.join(output, "js");
 fs.mkdirSync(jsOutput, { recursive: true });
 fs.copyFileSync(jsFile, path.join(jsOutput, "psmdoc.js"));
 
-
+var menuItemsHtml = "";
 
 files.forEach((file) => {
   const data = fs.readFileSync(file, "utf8");
@@ -154,18 +147,7 @@ files.forEach((file) => {
   // any string starting and ending with ~ whitout spaces is a strike text
   // any string starting and ending with ` whitout spaces is a code text
 
-  let defaultSite = {
-    title: "",
-    description: "",
-    keywords: "",
-    author: "",
-    robots: "",
-    autoIndex: "",
-    font: "",
-    style: {},
-    languages: [],
-    version: "",
-  };
+  
   var label = path.basename(file, ".psmdoc");
   // if data first line start with ##, then contains page information
   // example: ## title="Gestión Ciudad | Software de Gestión de Municipial" label="Inicio" description="Gestión Ciudad es un software de gestión de municipios que permite a los ciudadanos realizar trámites y consultas de forma online." keywords="gestión ciudad, software de gestión de municipios, trámites online, consultas online" author="Gestión Ciudad | Norman Torres" robots="index, follow" auto-index="true" font="https://fonts.googleapis.com/css?family=Roboto:400,700&display=swap" style="background:#f5f5f5;color:#333;font-family:Roboto, sans-serif;font-size:16px;line-height:1.5;text-align:left" languages="es,en" version="3.2.0"

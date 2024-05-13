@@ -2,13 +2,14 @@
   "name": "@prioritysupport.mobi/psmdoc",
   "version": "1.0.0",
   "description": "",
-  "type": "module",
+  "type": "module", 
   "main": "src/index.js",
+  "bin": {
+    "psmdoc": "src/index.js"
+  },
   "scripts": {
-    "build": "tsc -p tsconfig.json && tsc -p tsconfig-cjs.json",
-    "prepublish": "npm run build",
     "test": "test",
-    "parse": "node src/index.ts"
+    "parse": "node src/index.js"
   },
   "repository": {
     "type": "git",

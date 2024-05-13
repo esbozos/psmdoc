@@ -1,8 +1,8 @@
 // @ts-check
 
-import logger from "./logger.ts";
+import logger from "./logger.js";
 
-const inlineParser = (line: string) => {
+const inlineParser = (line) => {
   // inline elements as bold, italic, strike and code
   // example: Today is a *good* day for a _walk_ and a ~swim~ with `friends.sh ride`
   // output: Today is a <b>good</b> day for a <i>walk</i> and a <strike>swim</strike> with <code>friends.sh ride</code>
@@ -67,9 +67,12 @@ const inlineParser = (line: string) => {
   return html;
 };
 
-const parseLink = (line: string, lang: string | null = "en") => {
+const parseLink = (line, lang) => {
   // #EL https://gestionciudad.com lg-es="Gestión Ciudad" lg-en="City Management" lg-fr="Gestion de la ville" target=_blank
   var link = line.split(" ");
+  if(!lang) {
+    lang = "en";
+  }
   if (link.length < 2) {
     logger.error(`Link ${link} is not valid`);
     return "";
@@ -112,8 +115,8 @@ const parseLink = (line: string, lang: string | null = "en") => {
   return `<a href="${src}" target="${target}">${text}</a>`;
 };
 
-const psmdocParser = (data: string, lang: string | any = null) => {
-  if (lang === null) {
+const psmdocParser = (data, lang) => {
+  if (!lang) {
     lang = "en";
   }
 
