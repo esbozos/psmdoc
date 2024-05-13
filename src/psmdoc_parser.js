@@ -119,7 +119,7 @@ const psmdocParser = (data, lang) => {
   if (!lang) {
     lang = "en";
   }
-
+  var headersIds = [];
   // using regex to split into end of lines
   const lines = data.split(/\r?\n\r?\n/);
 
@@ -143,8 +143,44 @@ const psmdocParser = (data, lang) => {
     if (currentLine.startsWith("#")) {
       if (currentLine.toUpperCase().startsWith("#H")) {
         var level = currentLine.charAt(2);
-        var content = inlineParser(currentLine.substring(3));
-        htmlFile += `<h${level}>${content}</h${level}>\n`;
+        var firstSpace = currentLine.indexOf(" ");
+        var afterLevelId = currentLine.substring(3, firstSpace);        
+        var content = inlineParser(currentLine.substring(firstSpace + 1));
+        // remove any special characters from the content to create the id
+         var id = afterLevelId.trim();
+        if(!id || id === "") {
+          id = content.trim();
+        }
+        id = content.replace(" ", "-");
+        // replace any vowels with accents with the same vowel without accent
+        id = id.replace(/[áäâà]/g, "a");
+        id = id.replace(/[éëêè]/g, "e");
+        id = id.replace(/[íïîì]/g, "i");
+        id = id.replace(/[óöôò]/g, "o");
+        id = id.replace(/[úüûù]/g, "u");
+        id = id.replace(/[ñ]/g, "n");
+        id = id.replace(/[ç]/g, "c");
+        id = id.replace(/[ß]/g, "ss");
+        id = id.replace(/[&]/g, "and");
+        id = id.replace(/[^\w\s]/g, "");
+        id = id.replace(/\s+/g, "-");
+        id = id.replace(/^[^a-zA-Z0-9\-]+/, "");
+        // check if the id already exists
+        if (headersIds.includes(id)) {
+          // add a number at the end of the id
+          var count = 1;
+          while (headersIds.includes(`${id}${count}`)) {
+            count++;
+          }
+          id = `${id}${count}`;
+        }
+
+        htmlFile += `<h${level} id="${id}">
+          <a href="#${id}">
+            ${content}
+            <svg aria-hidden="true" focusable="false" class="Octicon-sc-9kayk9-0 ituJXZ octicon-link" viewBox="0 0 16 16" width="16" height="16" fill="currentColor" style="display:inline-block;user-select:none;vertical-align:text-bottom;overflow:visible"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg>
+          </a>
+        </h${level}>\n`;
       } else if (currentLine.toUpperCase().startsWith("#IMG")) {
         var img = currentLine.split(" ");
         var src = img[1];

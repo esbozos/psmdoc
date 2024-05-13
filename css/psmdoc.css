@@ -103,6 +103,44 @@ a {
 a:hover {
   text-decoration: underline;
 }
+/* Links on headings with grandient colors*/
+h1 a, h2 a, h3 a, h4 a, h5 a, h6 a {
+  /* text with gradient color */
+  color: var(--psm-dark-color);
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+}
+/* headings links svg */
+h1 a svg, h2 a svg, h3 a svg, h4 a svg, h5 a svg, h6 a svg {
+  /* svg with gradient color */
+  fill: var(--psm-dark-color);
+  margin-right: 5px;
+  margin-left: 5px;
+}
+/* headings links hover add 0.2 to dark color */
+h1 a:hover, h2 a:hover, h3 a:hover, h4 a:hover, h5 a:hover, h6 a:hover {
+  color: calc(var(--psm-dark-color) + 0.2);
+  text-decoration: none;
+}
+
+
+
+h1 a:hover, h2 a:hover, h3 a:hover, h4 a:hover, h5 a:hover, h6 a:hover {
+  color: calc(var(--psm-dark-color) + 0.2);
+  text-decoration: none;
+}
+
+/* h1 are sections add border bottom */
+h1 {
+  border-bottom: 1px solid var(--psm-gray-color);
+  padding-bottom: 5px;
+  margin-bottom: 10px;
+}
+
+
+
+
 .psm-mobile-menu {
   display: none;
   visibility: hidden;
