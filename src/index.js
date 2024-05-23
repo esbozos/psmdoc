@@ -42,6 +42,10 @@ let rootSite = {};
 try {
   site = JSON.parse(fs.readFileSync(file, "utf8"));
   rootSite = JSON.parse(fs.readFileSync(file, "utf8"));
+  if(rootSite.logo && !rootSite.logo.startsWith("http")) {
+    // path to root of site
+    rootSite.logo = path.join("/", rootSite.logo);
+  }
 } catch (e) {
   console.error("Error parsing json file");
   process.exit(1);
@@ -216,11 +220,11 @@ files.forEach((file) => {
     </style>
   </head>
     <body>
-      <main>
-       <!-- mobile menu -->
+      <main>       
         <div class="psm-mobile-menu" id="psm-mobile-menu">
           <div class="psm-mobile-menu-button">
-            ☰ ${rootSite.title}
+            ☰ ${rootSite.title} 
+              ${rootSite.logo ? `<img src="${rootSite.logo}" alt="${rootSite.title}" width="50" height="50" />` : ""}
           </div>
           <div class="psm-mobile-menu-content">
             <ul>
@@ -228,15 +232,14 @@ files.forEach((file) => {
             </ul>
           </div>
         </div>
-
+        <header>
+          <div class="psm-row">
+            ${psmdocParser(header)}
+          </div>
+        </header>
         <div class="psm-row">          
-          <div class="psm-content">
-           
-                          `);
-  html.push(psmdocParser(header));
-  html.push(`${htmlFile}`);
-  html.push(psmdocParser(footer));
-  html.push(`
+          <div class="psm-content">           
+            ${htmlFile}
           </div>
           <div class="psm-sidebar">
             <h2>Menu</h2>
@@ -244,7 +247,10 @@ files.forEach((file) => {
               ${menuItemsHtml}
             </ul>
           </div>
-        </div>        
+        </div>
+        <div class="psm-row">
+          ${psmdocParser(footer)}        
+        </div>
       </main>
       <footer>
         <p>&copy; ${rootSite.title} ${new Date().getFullYear()}</p>

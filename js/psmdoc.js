@@ -5,4 +5,7 @@ window.onload = function() {
     psmMobileMenu.addEventListener('click', function() {
         psmMobileMenu.classList.toggle('open');
     });
+
+    // add event listener to psm-accordion-option
+    
 }

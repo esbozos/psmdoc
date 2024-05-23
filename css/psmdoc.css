@@ -15,7 +15,7 @@
     --psm-black-color: #000000;
     --psm-gray-color: #6c757d;
     --psm-gray-dark-color: #343a40;
-    --psm-gray-light-color: #f8f9fa;
+    --psm-gray-light-color: #e1e1e1;
     --psm-gray-lighter-color: #f1f1f1;
     --psm-table-border: 1px Solid var(--psm-gray-color);
     font-size: 16px;
@@ -266,4 +266,87 @@ footer a:hover {
   }
 
 
+}
+
+/* accordion */
+.psm-accordion {
+  background-color: var(--psm-gray-lighter-color);
+  color: var(--psm-dark-color);
+  cursor: pointer;
+  padding: 18px;
+  width: 100%;
+  border: none;
+  text-align: left;
+  outline: none;
+  font-size: 15px;
+  transition: 0.4s;
+}
+
+.psm-accordion-option-title {
+  background-color: var(--psm-gray-light-color);
+  color: var(--psm-dark-color);
+  cursor: pointer;
+  padding: 18px;
+  width: 100%;
+  border: none;
+  text-align: left;
+  outline: none;
+  font-size: 15px;
+  transition: 0.4s;
+  display: flex;
+  align-items: center;
+  font-size: 1.2em;
+  font-weight: bold;
+  border-bottom: 1px solid var(--psm-gray-color);
+  padding: 10px;
+  margin: 0;
+}
+
+.psm-accordion-option-title input {
+  display: none;
+
+}
+
+.psm-accordion-option-title:before {
+  content: "+";
+  font-size: 1.5em;
+  margin-right: 10px;
+}
+
+.psm-accordion-option-title.active:before {
+  content: "-";
+}
+
+.psm-accordion.active, .psm-accordion-option.active {
+  background-color: var(--psm-gray-lighter-color);
+  color: var(--psm-dark-color);
+}
+
+
+
+.psm-accordion-option-title:hover {
+  background-color: var(--psm-gray-color);
+}
+
+.psm-accordion-option-content {
+  padding: 30px 18px;
+  display: none;
+  overflow: hidden;
+  background-color: var(--psm-gray-lighter-color);
+}
+
+.psm-accordion-option-content.active {
+  display: block;
+}
+
+/* End Accordion */
+
+/* Video */
+.psm-video-wrapper {
+  /* margin: auto; */
+  display: flex;
+  /* justify-content: center; */
+  padding: 30px 0px;
+  flex-direction: column;
+  align-items: center;
 }
