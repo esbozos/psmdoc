@@ -1,0 +1,14 @@
+## title="Introducción" label="Intro"
+
+#H1 intro Introducción
+
+Este documento muestra estructura básica de carpetas y etiquetas.
+
+#TABLE Comandos principales
+| Comando | Uso |
+| --- | --- |
+| psmdoc build docs/site.json docs/build/html | Generar HTML local |
+| psmdoc sync --dir ./docs --project-id 123 --client-secret SECRET --dry-run | Simular sincronización remota |
+
+#QUOTE
+Documenta local, sincroniza cuando estés listo.

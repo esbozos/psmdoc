@@ -1,300 +1,242 @@
-# PSMDOC
+# PSMDOC Parser (Public CLI)
 
-<!-- Warning -->
+CLI público para:
 
-## Warning
+- Generar HTML local desde archivos .psmdoc
+- Sincronizar documentación local contra servicio remoto (API)
 
-This project is under development and is not ready for production use. The documentation is incomplete and the features are not fully implemented.
+## Estado
 
-## TODO
+Proyecto en desarrollo activo. El comando sync y el parser siguen evolucionando.
 
-- [ ] Build mobile app command
-- [ ] Internationalization support (Partial implemented)
-- [ ] Search indexing
-- [ ] Search functionality
-
-
- 
-
-## Prority Support Mobi DOCs
-
-Priority support provide a easy versioned documentation system to be accessed and maintained by the support teams trough mobile devices and desktops applications.
-
-## Features
-
-- Versioned documentation
-- Easy to use
-- Mobile friendly, (Generate mobile app to read documentation offline)
-- Desktop friendly (Generate desktop app to read documentation offline)
-- Easy to maintain and update
-- Easy to deploy and share
-
-## How to use
-
-Create a new folder for your documentation and add a MyPsmDoc.json file with the following structure:
-
-```json
-{
-    "title": "My Documentation",
-    "description": "This is a sample documentation",
-    "keywords": "documentation, sample, example",
-    "author": "John Doe",
-    "robots": "index, follow",
-    "auto-index": "true",
-    "font": "https://fonts.googleapis.com/css?family=Roboto:400,700&display=swap",
-    "style": {
-        "background": "#f5f5f5",
-        "color": "#333",
-        "font-family": "Roboto, sans-serif",
-        "font-size": "16px",
-        "line-height": "1.5",
-        "text-align": "left"        
-    },
-    "languages": ["en", "fr", "de"],
-    "version": "1.0.0"
-}
-```
-
-Inital folder structure:
-
-```bash
-.
-├── docs
-│   ├── MyPsmDoc.json
-
-```
-
-The root folder will contain the documentation files and folders.
-
-```bash
-.
-├── docs
-│   ├── MyPsmDoc.json
-│   ├── Home.psmdoc
-│   ├── GettingStarted
-│   │   ├── Introduction.psmdoc
-│   │   ├── Installation.psmdoc
-│   │   ├── Configuration.psmdoc
-│   ├── UserGuide
-│   │   ├── Login.psmdoc
-│   │   ├── Dashboard.psmdoc
-│   │   ├── Profile.psmdoc
-│   ├── AdminGuide
-│   │   ├── Users.psmdoc
-│   │   ├── Roles.psmdoc
-│   │   ├── Permissions.psmdoc
-│   ├── DeveloperGuide
-│   │   ├── Architecture.psmdoc
-│   │   ├── Modules.psmdoc
-│   ├── Support
-│   │   ├── Contact.psmdoc
-
-```
-
-
-Add your documentation files with the .psmdoc extension. Use Folder names to create sections and sub-sections.
-
-## .psmdoc file structure
-
-All configurations and attributes are optional, a .psmdoc file can be as simple as a single line of text.
-
-```markdown
-Hello World!
-```
-
-Files are parsed in blocks, each block is separated by a blank line. Blocks can contain new lines inside them.
-The following example shows a document with two blocks.
-
-```markdown
-Hello World!
-
-This is a new block
-that contains multiple lines
-in it.
-```
-
-### Block attributes
-
-#### Heading
-
-Headings are defined by a single hash and the header level. The following example shows a document with three headings.
-
-```markdown
-#H1 Introduction
-
-#H2 Getting Started
-with PSMDOC
-
-#H3 Installation
-```
-
-In the previous example, H2 constains many lines of text, but the parser will consider it as a single block. This is because the block is separated by a blank line. And usefull to create content in mobile devices for better reading.
-
-#### Bold text
-
-Bold text is defined by asterisks. The following example shows a document with bold text.
-
-```markdown
-*This is a bold text*
-
-#H1 My Document is *awesome*
-```
-
-will render as:
-
-**This is a bold text**
-
-<h1>My Document is **awesome**</h1>
-
-#### Italic text
-
-Italic text is defined by underscores. The following example shows a document with italic text.
-
-```markdown
-_This is an italic text_
-
-#H1 My Document is _awesome_
-```
-
-will render as:
-
-_This is an italic text_
-
-<h1>My Document is _awesome_</h1>
-
-#### Lists
-
-Lists are defined by a dash. The following example shows a document with a list.
-
-```markdown
-- Item 1
-- Item 2
-- Item *3*
-```
-
-will render as:
-
-- Item 1
-- Item 2
-- Item *3*
-
-#### Links
-
-Are two types of links, internal and external links.
-
-Internal links are lines that start with #IL followed by the link text and the file name. The file name must be the same as the file name.
-
-```markdown
-#IL /GettingStarted/Introduction.psmdoc "Getting Started" target="_blank"
-```
-
-External links are lines that start with #EL followed by the link text and the URL.
-
-```markdown
-#EL https://www.google.com Google target="_blank"
-```
-
-##### Inline links
-
-Inline links inside other blocks (text, headings, lists, etc) are added in new lines with the following syntax:
-
-```markdown
-
-This is a link inside a text block to
-#EL https://www.google.com Google target="_blank"
- main page.
-
-- Item 1
-- Item 2 link to
-#EL https://www.google.com Google target="_blank"
-page.
-- Item 3
-```
-
-#### Images
-
-Images are lines that start with #IMG followed by the image URL and the alt text.
-
-```markdown
-#IMG https://www.google.com/images/branding/googlelogo/1x/googlelogo_color_272x92dp.png "Google Logo" width="100" height="100" fit="cover"
-
-```
-
-#### Code
-
-Code is defined by three backticks. The following example shows a document with code.
-
-```markdown
-```
-function helloWorld() {
-    console.log("Hello World!");
-}
-```
-```
-
-#### Tables
-
-Tables are defined by a first line with #table Caption, and following lines with the table headers and rows.
-
-```markdown
-#table My Table
-| Header 1 | Header 2 | Header 3 |
-|----------|----------|----------|
-| Row 1    | Row 1    | Row 1    |
-| Row 2    | Row 2    | Row 2    |
-| Row 3    | Row 3    | Row 3    |
-```
-
-#### Quotes
-
-Quotes are defined by a #QUOTE tag. The following example shows a document with a quote.
-
-```markdown
-#QUOTE This is a quote
-```
-
-
-
-
-
-Multiple levels are not supported yet.
-
-Set document attributes in the header of the file. If the first line starts with double hash ##, the parser will consider it as the header of the file.
-
-```markdown
-## title="Introduction to my documentation" label="Introduction"
-
-```	
-
-
-# Installation
-
-## Requirements
-
-- Node.js
-- NPM
-
-## Install
+## Instalación
 
 ```bash
 npm install -g @prioritysupport.mobi/psmdoc
 ```
 
-# Usage
+Uso local del repositorio:
 
 ```bash
-
-psmdoc mydoc_settings.json
-
+npm install
+node src/index.js
 ```
 
-# License
+## Comandos CLI
 
-MIT
+### 1) Build local
 
+Genera HTML en carpeta local a partir de un site.json y archivos .psmdoc.
 
+```bash
+psmdoc build <site.json> [output]
+```
 
+Compatibilidad legacy:
 
+```bash
+psmdoc <site.json> [output]
+```
 
+- site.json: configuración del sitio
+- output opcional: carpeta destino (por defecto: build/html dentro de la carpeta del JSON)
 
+### 2) Sync remoto
 
+Sincroniza una carpeta local con un proyecto remoto en la API.
+
+```bash
+psmdoc sync \
+  --dir ./docs \
+  --project-id 123 \
+  --client-secret "<project_key>" \
+  --base-url "https://psmdoc.gestionciudad.com"
+```
+
+Flags soportados:
+
+- --dir: carpeta local raíz de documentación
+- --project-id: id del proyecto remoto
+- --client-secret: project_key remoto
+- --base-url: URL base de API (default: https://psmdoc.gestionciudad.com)
+- --flush: archiva remoto y recrea desde cero
+- --version: versión fija (ej: 1.2.0) o + para bump patch
+- --dry-run: simula sincronización sin cambios remotos
+- --verbose: detalle por archivo
+
+Comportamiento por defecto de sync:
+
+- Calcula checksum de archivos locales y remotos
+- Solo sube cambios
+- Omite archivos sin cambios
+
+## Flujo de sync (alto nivel)
+
+1. Escanea archivos .psmdoc y assets locales
+2. Obtiene manifiesto remoto
+3. Calcula delta (crear/actualizar/sin cambios)
+4. Sube assets primero
+5. Reescribe referencias locales de assets a URL remota
+6. Sube archivos .psmdoc actualizados
+7. Aplica versión si se envió --version
+
+Con --flush:
+
+- Se crea snapshot remoto
+- Se vacía contenido remoto
+- Se recrea desde estructura local
+
+## Estructura recomendada
+
+```text
+docs/
+  site.json
+  header.psmdoc
+  footer.psmdoc
+  Home.psmdoc
+  GettingStarted/
+    Introduction.psmdoc
+    Installation.psmdoc
+  images/
+    logo.png
+```
+
+Notas:
+
+- header.psmdoc y footer.psmdoc se inyectan en todas las páginas del build local
+- En build local se copian css/psmdoc.css y js/psmdoc.js
+
+## Ejecución rápida con demo incluida
+
+Este repositorio ya incluye una carpeta demo lista en docs/.
+
+Build local de la demo:
+
+psmdoc build docs/site.json docs/build/html
+
+Sync de prueba (sin escribir remoto):
+
+psmdoc sync --dir ./docs --project-id 123 --client-secret "TU_PROJECT_KEY" --dry-run --verbose
+
+Si quieres publicar cambios reales:
+
+psmdoc sync --dir ./docs --project-id 123 --client-secret "TU_PROJECT_KEY" --verbose
+
+## Soporte de assets locales
+
+Se soportan referencias locales en etiquetas multimedia, por ejemplo:
+
+```txt
+#IMG images/logo.png "Logo"
+#PDF docs/manual.pdf width=100% height=800
+#AUDIO media/intro.mp3
+```
+
+En sync remoto:
+
+- El CLI sube assets
+- Obtiene URL pública
+- Reescribe automáticamente src/rutas en el contenido antes de subir archivos
+
+Nota actual de backend:
+
+- El endpoint de upload de assets está implementado sobre el modelo de imágenes.
+- En esta versión, para sync remoto usa preferentemente JPG/PNG/WEBP.
+- SVG puede ser parseable en local pero ser rechazado por el backend de upload.
+
+## Cabecera por archivo (##)
+
+Si la primera línea de un .psmdoc inicia con ##, se interpretan metadatos.
+
+Ejemplo:
+
+```txt
+## title="Introduccion" label="Inicio" description="Resumen rapido"
+```
+
+Campos reconocidos por CLI/build:
+
+- title
+- description
+- keywords
+- author
+- robots
+- auto-index
+- font
+- languages
+- version
+- label
+
+## Sintaxis .psmdoc soportada
+
+El parser trabaja por bloques separados por línea en blanco doble.
+
+Inline:
+
+- *texto* -> negrita
+- _texto_ -> itálica
+- ~texto~ -> tachado
+- `texto` -> código inline
+
+Etiquetas:
+
+- #H1 … #H6
+- #HR
+- #IMG
+- #CODE
+- #IL / #EL
+- #TABLE
+- #QUOTE
+- #VIDEO (youtube watch, youtu.be, embed)
+- #AUDIO
+- #PDF
+- #SVG
+- #MAP
+- #ACCORDION / #O / #ENDACCORDION
+
+## Ejemplo mínimo
+
+```txt
+## title="Guia de inicio" label="Inicio"
+
+#H1 guia-inicio Guia de inicio
+
+Bienvenido a la *documentacion*.
+
+#IMG images/logo.png "Logo"
+
+#H2 faq Preguntas frecuentes
+
+#ACCORDION FAQ
+#O Como sincronizo?
+Ejecuta psmdoc sync con project-id y client-secret.
+
+#ENDACCORDION
+```
+
+## Endpoints remotos usados por sync
+
+- /api/project/sync/manifest/
+- /api/project/sync/apply/
+- /api/project/sync/delete/
+- /api/project/sync/upload-asset/
+- /api/project/sync/archive/
+- /api/project/sync/version/
+
+Importante:
+
+- El comando sync requiere que estos endpoints estén desplegados en el backend remoto.
+- Si recibes 404 en /api/project/sync/manifest/, el servidor aún no tiene el módulo sync publicado.
+
+Headers de autenticación:
+
+- X-Project-Id
+- X-Client-Secret
+
+## Scripts de desarrollo
+
+- npm run parse -> node src/index.js
+
+## Licencia
+
+ISC

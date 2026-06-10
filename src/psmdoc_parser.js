@@ -1,6 +1,64 @@
 // @ts-check
+// Parser PSMDoc — alineado con psmdoc-web/src/utils/psmdocParser.js
+// Versión pública con soporte local (localMode) y reescritura de assets (assetMap).
 
 import logger from "./logger.js";
+
+// ---------------------------------------------------------------------------
+// Helpers de seguridad y sanitización
+// ---------------------------------------------------------------------------
+
+const escapeHtml = (value) => {
+  if (value === null || value === undefined) return "";
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+};
+
+const stripQuotes = (value) => {
+  if (!value) return "";
+  const trimmed = String(value).trim();
+  if (
+    (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+    (trimmed.startsWith("'") && trimmed.endsWith("'"))
+  ) {
+    return trimmed.substring(1, trimmed.length - 1);
+  }
+  return trimmed;
+};
+
+/**
+ * @param {string} value
+ * @param {boolean} [localMode=false] - Permitir rutas relativas sin prefijo (ej. images/logo.png)
+ */
+const sanitizeUrl = (value, localMode = false) => {
+  if (!value) return "";
+  let url = String(value).trim().replace(".psmdoc", ".html");
+  if (!url) return "";
+  if (url.startsWith("/") || url.startsWith("./") || url.startsWith("../")) return url;
+  if (/^(https?:|mailto:|tel:)/i.test(url)) return url;
+  // Modo local: permitir rutas relativas simples como images/logo.png
+  if (localMode && !/^[a-zA-Z][a-zA-Z0-9+\-.]*:/.test(url)) return url;
+  return "";
+};
+
+const sanitizeDimension = (value) => {
+  if (!value) return "";
+  const normalized = stripQuotes(value);
+  return /^(\d+)(px|%|vw|vh)?$/i.test(normalized) ? normalized : "";
+};
+
+const sanitizeToken = (value) => {
+  if (!value) return "";
+  return String(value).replace(/[^a-zA-Z0-9_-]/g, "");
+};
+
+// ---------------------------------------------------------------------------
+// idFromString
+// ---------------------------------------------------------------------------
 
 const idFromString = (str) => {
   // remove any special characters from the content to create the id
@@ -26,30 +84,24 @@ const idFromString = (str) => {
 };
 
 const inlineParser = (line) => {
-  // inline elements as bold, italic, strike and code
-  // example: Today is a *good* day for a _walk_ and a ~swim~ with `friends.sh ride`
-  // output: Today is a <b>good</b> day for a <i>walk</i> and a <strike>swim</strike> with <code>friends.sh ride</code>
-  // can be combined as well as *~good~* or _*good*_ or ~*good*~ or *~`good`~* or *~`good~`* or ~*`good`*~
-  // output: <b><strike>good</strike></b> or <i><b>good</b></i> or <strike><b>good</b></strike> or <b><strike><code>good</code></strike></b> or <b><strike><code>good</code></strike></b> or <strike><b><code>good</code></b></strike>
-  // or any combination of the above
+  if (line === null || line === undefined) return "";
+  if (typeof line !== "string") line = String(line);
 
   let html = "";
-  let elementLevels = {
-    "*": 0,
-    _: 0,
-    "~": 0,
-    "`": 0,
-  };
+  let elementLevels = { "*": 0, _: 0, "~": 0, "`": 0 };
+
   for (let i = 0; i < line.length; i++) {
     if (line[i] === "#") {
-      // check if it is a link
-      var link = line.substring(i, i + 3);
-      if ([`#EL`, `#IL`].includes(link)) {
-        var indexEnd = line.indexOf("\n", i);
-        var linkText = line.substring(i, indexEnd);
-        var linkHTML = parseLink(linkText);
+      const link = line.substring(i, i + 3);
+      if (["#EL", "#IL"].includes(link)) {
+        let indexEnd = line.indexOf("\n", i);
+        if (indexEnd === -1) indexEnd = line.length;
+        const linkText = line.substring(i, indexEnd);
+        const linkHTML = parseLink(linkText);
         html += `&nbsp;${linkHTML}&nbsp;`;
         i = indexEnd;
+      } else {
+        html += escapeHtml(line[i]);
       }
     } else if (line[i] === "*") {
       if (elementLevels["*"] === 0) {
@@ -84,210 +136,178 @@ const inlineParser = (line) => {
         elementLevels["`"] = 0;
       }
     } else {
-      html += line[i];
+      html += escapeHtml(line[i]);
     }
   }
   return html;
 };
 
-const parseLink = (line, lang) => {
-  // EL https://youtube.com "Youtuve Video" target=_blank
-  // #EL https://gestionciudad.com lg-es="Gestión Ciudad" lg-en="City Management" lg-fr="Gestion de la ville" target=_blank
-  // TODO: text should all in quotes
-  var link = line.split(" ");
-  if (!lang) {
-    lang = "en";
-  }
-  if (link.length < 2) {
-    logger.error(`Link ${link} is not valid`);
+/**
+ * @param {string} line
+ * @param {string} [lang]
+ * @param {boolean} [localMode]
+ */
+const parseLink = (line, lang, localMode = false) => {
+  const parts = line.split(" ");
+  if (!lang) lang = "en";
+  if (parts.length < 2) {
+    logger.error(`Link "${line}" is not valid`);
     return "";
   }
-  var src = link[1];
-  src = src.trim().replace(".psmdoc", ".html");
-  // get all lg-xx attributes
-  var langAttrs = link.filter((attr) => attr.startsWith("lg-"));
-  var text = "";
-  if (!langAttrs.length) {
-    // get the title into quotes
-    var firstQuote = line.indexOf(`"`);
-    var lastQuote = line.substring(firstQuote + 1).indexOf(`"`) + firstQuote + 1;
-    text = line.substring(firstQuote + 1, lastQuote);
+  const src = sanitizeUrl(parts[1], localMode);
+  if (!src) return "";
 
+  // Atributos de idioma lg-xx="..."
+  const langAttrs = parts.filter((a) => a.startsWith("lg-"));
+  let text = "";
+  if (!langAttrs.length) {
+    const firstQuote = line.indexOf('"');
+    if (firstQuote !== -1) {
+      const lastQuote = line.substring(firstQuote + 1).indexOf('"') + firstQuote + 1;
+      text = line.substring(firstQuote + 1, lastQuote);
+    }
   } else {
-    for (var j = 0; j < langAttrs.length; j++) {
-      if (langAttrs[j].startsWith(`lg-${lang}`)) {
-        text = langAttrs[j].split("=")[1];
+    for (const attr of langAttrs) {
+      if (attr.startsWith(`lg-${lang}`)) {
+        text = attr.split("=")[1] || "";
       }
     }
   }
-  if (!text) {
-    text = src;
-  }
-  // remove quotes at the beginning and end of the text
-  logger.info(`Link ${src} text ${text}`);
-  text = text.trim();
-  if ([`"`, `'`].includes(text.charAt(0))) {
-    text = text.substring(1, text.length);
-  }
-  if ([`"`, `'`].includes(text.charAt(text.length - 1))) {
-    text = text.substring(0, text.length - 1);
-  }
+  if (!text) text = src;
+  text = stripQuotes(text);
+  text = escapeHtml(text);
 
-  logger.info(`Link ${src} ${text}`);
-  // get target attribute
-  var externalLink = line.toUpperCase().startsWith("#EL");
-  var target =  externalLink ? "_blank" : "";
-  // check if line contains target attribute
-  var targetIndex = line.indexOf("target=");
-  console.log(`Target index ${targetIndex}`);
+  const externalLink = line.toUpperCase().startsWith("#EL");
+  let target = externalLink ? "_blank" : "";
+  const targetIndex = line.indexOf("target=");
   if (targetIndex !== -1) {
-    // target end with space or end of line
-    var endTarget = line.indexOf(" ", targetIndex);
-    if (endTarget === -1) {
-      endTarget = line.length;
-    }
-    console.log(`End target ${endTarget}`);    
-    target = line.substring(targetIndex, endTarget);
-    console.log(`Target ${target}`);
-    target = target.split("=")[1];
-    // remove quotes at the beginning and end of the target
-    target = target.trim();
-    target = target.substring(1, target.length - 1);
+    const endTarget = line.indexOf(" ", targetIndex);
+    const raw = line.substring(targetIndex, endTarget === -1 ? line.length : endTarget);
+    target = stripQuotes(raw.split("=")[1] || "");
   }
-  
+  if (target && !/^(_blank|_self|_parent|_top)$/i.test(target)) target = "_self";
+  const rel = target === "_blank" ? ' rel="noopener noreferrer"' : "";
 
-  return `<a href="${src}" target="${target}">${text}</a>`;
+  return `<a href="${escapeHtml(src)}" target="${escapeHtml(target)}"${rel}>${text}</a>`;
 };
 
-const psmdocParser = (data, lang) => {
-  if (!lang) {
-    lang = "en";
-  }
+/**
+ * @param {string} data
+ * @param {string} [lang]
+ * @param {{ localMode?: boolean, assetMap?: Record<string,string> }} [options]
+ */
+const psmdocParser = (data, lang, options = {}) => {
+  if (!lang) lang = "en";
+  const localMode = options.localMode || false;
+  const assetMap = options.assetMap || {};
+
+  // Reemplaza refs locales de assets si hay un mapa
+  const resolveAsset = (src) => assetMap[src] || src;
+
   var headersIds = [];
   var accordionIds = [];
-  // using regex to split into end of lines
-  const lines = data.split(/\r?\n\r?\n/);
 
-  if (lines.length === 0) {
-    return "";
-  }
+  const lines = String(data || "").split(/\r?\n\r?\n/);
+  if (lines.length === 0) return "";
+
   let htmlFile = "";
 
   for (var i = 0; i < lines.length; i++) {
-    if (lines[i] === undefined || lines[i] === "") {
-      // i is higher than the length of lines array
-      continue;
-    }
-    if (htmlFile !== "") {
-      htmlFile += "<br>\n";
-    }
-    var currentLine = lines[i];
-    // remove any leading or trailing spaces
-    currentLine = currentLine.trim();
+    if (lines[i] === undefined || lines[i] === "") continue;
+    var previousHtmlLength = htmlFile.length;
+    if (htmlFile !== "") htmlFile += "<br>\n";
+    var currentLine = lines[i].trim();
 
     if (currentLine.startsWith("#")) {
-      if (currentLine.toUpperCase().startsWith("#H")) {
+      // -----------------------------------------------------------------------
+      // #HR
+      // -----------------------------------------------------------------------
+      if (currentLine.toUpperCase().startsWith("#HR")) {
+        htmlFile += "<hr>\n";
+
+      // -----------------------------------------------------------------------
+      // #H1 … #H6
+      // -----------------------------------------------------------------------
+      } else if (/^#H[1-6](\s|$)/i.test(currentLine)) {
         var level = currentLine.charAt(2);
         var firstSpace = currentLine.indexOf(" ");
         var afterLevelId = currentLine.substring(3, firstSpace);
         var content = inlineParser(currentLine.substring(firstSpace + 1));
-        // remove any special characters from the content to create the id
-        var id = afterLevelId.trim();
-        if (!id || id === "") {
-          id = content.trim();
-        }
+        var id = afterLevelId.trim() || content.trim();
         id = idFromString(id);
-        // check if the id already exists
         if (headersIds.includes(id)) {
-          // add a number at the end of the id
           var count = 1;
-          while (headersIds.includes(`${id}${count}`)) {
-            count++;
-          }
+          while (headersIds.includes(`${id}${count}`)) count++;
           id = `${id}${count}`;
         }
-
+        headersIds.push(id);
         htmlFile += `<h${level} id="${id}">
           <a href="#${id}">
             ${content}
-            <svg aria-hidden="true" focusable="false" class="Octicon-sc-9kayk9-0 ituJXZ octicon-link" viewBox="0 0 16 16" width="16" height="16" fill="currentColor" style="display:inline-block;user-select:none;vertical-align:text-bottom;overflow:visible"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg>
+            <svg aria-hidden="true" focusable="false" viewBox="0 0 16 16" width="16" height="16" fill="currentColor" style="display:inline-block;user-select:none;vertical-align:text-bottom;overflow:visible"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"></path></svg>
           </a>
         </h${level}>\n`;
+
+      // -----------------------------------------------------------------------
+      // #IMG
+      // -----------------------------------------------------------------------
       } else if (currentLine.toUpperCase().startsWith("#IMG")) {
         var img = currentLine.split(" ");
-        var src = img[1];
-        var alt = img[2];
-        var width = "";
-        var height = "";
-        var fit = "";
+        var rawSrc = img[1] || "";
+        var src = sanitizeUrl(resolveAsset(rawSrc), localMode);
+        if (!src) { htmlFile = htmlFile.substring(0, previousHtmlLength); continue; }
+        var alt = escapeHtml(img[2] || "");
+        var width = "", height = "", fit = "";
         for (var j = 3; j < img.length; j++) {
-          if (img[j].startsWith("width")) {
-            width = img[j].split("=")[1];
-          } else if (img[j].startsWith("height")) {
-            height = img[j].split("=")[1];
-          } else if (img[j].startsWith("fit")) {
-            fit = img[j].split("=")[1];
+          if (img[j].startsWith("width")) width = sanitizeDimension(img[j].split("=")[1]);
+          else if (img[j].startsWith("height")) height = sanitizeDimension(img[j].split("=")[1]);
+          else if (img[j].startsWith("fit")) fit = sanitizeToken(img[j].split("=")[1]);
+        }
+        htmlFile += `<img src="${escapeHtml(src)}" alt="${alt}" width="${width}" height="${height}" class="img object-fit-${fit}" loading="lazy" decoding="async">\n`;
+
+      // -----------------------------------------------------------------------
+      // #CODE
+      // -----------------------------------------------------------------------
+      } else if (currentLine.toUpperCase().startsWith("#CODE")) {
+        var codeContent = currentLine.split("\n").slice(1).join("\n");
+        if (!codeContent.trim() && i + 1 < lines.length) {
+          var nextCodeBlock = (lines[i + 1] || "").trim();
+          if (nextCodeBlock && !nextCodeBlock.startsWith("#")) {
+            codeContent = lines[i + 1];
+            i++;
           }
         }
-        htmlFile += `<img src="${src}" alt="${alt}" width="${width}" height="${height}" class="img object-fit-${fit}">\n`;
-      } else if (currentLine.toUpperCase().startsWith("#CODE")) {
-        htmlFile += "<pre><code>\n";
-        i++;
-        while (i < lines.length && lines[i] !== "") {
-          htmlFile += `${lines[i]}\n`;
-          i++;
-        }
-        htmlFile += "</code></pre>\n";
+        htmlFile += `<pre><code>${escapeHtml(codeContent)}</code></pre>\n`;
+
+      // -----------------------------------------------------------------------
+      // #IL / #EL
+      // -----------------------------------------------------------------------
       } else if (
         currentLine.toUpperCase().startsWith("#IL") ||
         currentLine.toUpperCase().startsWith("#EL")
       ) {
-        
-        var link = parseLink(currentLine, lang);
-        if (link.length) {
-          htmlFile += `${link}\n`;
-        }
+        var link = parseLink(currentLine, lang, localMode);
+        if (link.length) htmlFile += `${link}\n`;
         continue;
+
+      // -----------------------------------------------------------------------
+      // #TABLE
+      // -----------------------------------------------------------------------
       } else if (currentLine.toUpperCase().startsWith("#TABLE")) {
-        // #Table Medios de pago
-        // | Medio de pago | Descripción |
-        // | --- | --- |
-        // | Tarjeta de crédito | Puedes pagar con tarjeta de crédito Visa, Mastercard o American Express. |
-        // | Tarjeta de débito | Puedes pagar con tarjeta de débito Visa o Mastercard. |
-        // | Transferencia bancaria | Puedes realizar una transferencia bancaria a la cuenta de Gestión Ciudad. |
-        // | PayPal | Puedes pagar con tu cuenta de PayPal. |
-        // | Apple Pay | Puedes pagar con Apple Pay desde tu dispositivo Apple. |
-        // | Google Pay | Puedes pagar con Google Pay desde tu dispositivo Android. |
-        // | Banca en línea | Puedes pagar a través de la banca en línea de tu banco. |
-        // | Efectivo | Puedes pagar en efectivo en nuestras oficinas. |
-        // | Cheque | Puedes pagar con cheque a nombre de Gestión Ciudad. |
-        // | Pago en tiendas | Puedes pagar en tiendas autorizadas. |
-
-        logger.info(`Parsing table ${currentLine}`);
-        // Text after #Table is the title of the table
         var title = currentLine.split("\n")[0].split(" ").slice(1).join(" ");
-
-        htmlFile += `<div class="psm-table-wrapper">\n
-        <table role='table'>\n`;
-        htmlFile += `<caption role='caption'>${title}</caption>\n`;
-
-        // each row is separated by a new line
+        htmlFile += `<div class="psm-table-wrapper">\n<table role="table">\n`;
+        htmlFile += `<caption role="caption">${escapeHtml(title)}</caption>\n`;
         var rows = currentLine.split("\n");
-        // remove the first row as it is the title
         rows.shift();
-
         for (var j = 0; j < rows.length; j++) {
-          htmlFile += "<tr role='row'>\n";
-          // remove the first | and the last | and split by |
+          if (rows[j].indexOf("|") === -1 || rows[j].lastIndexOf("|") === -1) continue;
+          htmlFile += "<tr role=\"row\">\n";
           var firstPipe = rows[j].indexOf("|");
           var lastPipe = rows[j].lastIndexOf("|");
-          rows[j] = rows[j].substring(firstPipe + 1, lastPipe);
-          var row = rows[j].split("|");
+          var row = rows[j].substring(firstPipe + 1, lastPipe).split("|");
           for (var k = 0; k < row.length; k++) {
             if (j === 0) {
-              htmlFile += `<th scope="col" role="columnheader">${inlineParser(
-                row[k]
-              )}</th>\n`;
+              htmlFile += `<th scope="col" role="columnheader">${inlineParser(row[k])}</th>\n`;
               continue;
             }
             htmlFile += `<td role="cell">${inlineParser(row[k])}</td>\n`;
@@ -295,227 +315,198 @@ const psmdocParser = (data, lang) => {
           htmlFile += "</tr>\n";
         }
         htmlFile += "</table>\n</div>\n";
+
+      // -----------------------------------------------------------------------
+      // #QUOTE
+      // -----------------------------------------------------------------------
       } else if (currentLine.toUpperCase().startsWith("#QUOTE")) {
-        htmlFile += "<blockquote>\n";
-        i++;
-        var quoteText = "";
-        while (i < lines.length && lines[i] !== "") {
-          quoteText += lines[i];
-          i++;
-        }
-        var lineHTML = inlineParser(quoteText);
-        htmlFile += `${lineHTML}`;
-        htmlFile += "</blockquote>\n";
-      } else if (currentLine.toUpperCase().startsWith("#HR")) {
-        htmlFile += "<hr>\n";
+        var quoteText = currentLine.split("\n").slice(1).join("\n").trim();
+        if (!quoteText) { htmlFile = htmlFile.substring(0, previousHtmlLength); continue; }
+        htmlFile += `<blockquote><p>${inlineParser(quoteText)}</p></blockquote>\n`;
+
+      // -----------------------------------------------------------------------
+      // #VIDEO (YouTube)
+      // -----------------------------------------------------------------------
       } else if (currentLine.toUpperCase().startsWith("#VIDEO")) {
         var video = currentLine.split(" ");
-        var src = video[1];
-        if (src.toLowerCase().startsWith("youtube")) {
-          src = `https://www.youtube.com/embed/${src.split("=")[1]}`;
+        var vsrc = video[1] || "";
+        if (vsrc.toLowerCase().startsWith("youtube")) {
+          vsrc = `https://www.youtube.com/embed/${vsrc.split("=")[1] || ""}`;
+        } else if (vsrc.includes("youtube.com/watch?v=")) {
+          vsrc = `https://www.youtube.com/embed/${vsrc.split("v=")[1].split("&")[0]}`;
+        } else if (vsrc.includes("youtu.be/")) {
+          vsrc = `https://www.youtube.com/embed/${vsrc.split("youtu.be/")[1].split("?")[0]}`;
+        } else if (vsrc.includes("youtube.com/embed/")) {
+          // ya es embed, usar directo
         } else {
-          // only youtube videos are supported currently
-          logger.error(`Video ${src} is not supported`);
+          logger.error(`Video "${vsrc}" no soportado. Solo YouTube.`);
+          htmlFile = htmlFile.substring(0, previousHtmlLength);
           continue;
         }
+        vsrc = sanitizeUrl(vsrc);
+        if (!vsrc) { htmlFile = htmlFile.substring(0, previousHtmlLength); continue; }
         var vtitle = "";
-        if (video.length > 2) {
-          vtitle = video[2].trim().replace(/"/g, "");
+        var titleStart = currentLine.indexOf('"');
+        if (titleStart !== -1) {
+          var titleEnd = currentLine.indexOf('"', titleStart + 1);
+          if (titleEnd > titleStart) vtitle = escapeHtml(currentLine.substring(titleStart + 1, titleEnd));
         }
-        var width = "560";
-        var height = "315";
+        var vwidth = "560", vheight = "315";
         for (var j = 2; j < video.length; j++) {
-          if (video[j].startsWith("width")) {
-            width = video[j].split("=")[1];
-          } else if (video[j].startsWith("height")) {
-            height = video[j].split("=")[1];
-          }
+          if (video[j].startsWith("width")) vwidth = sanitizeDimension(video[j].split("=")[1]) || vwidth;
+          else if (video[j].startsWith("height")) vheight = sanitizeDimension(video[j].split("=")[1]) || vheight;
         }
-        htmlFile += `<div class="psm-video-wrapper">\n
-              ${vtitle ? `<h3>${vtitle}</h3>\n` : ""}
-              <iframe width="${width}" height="${height}" 
-                  src="${src}" 
-                  title="${vtitle}" 
-                  frameborder="0" 
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; 
-                    picture-in-picture; web-share" 
-                  referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
-            </div>\n`;
+        htmlFile += `<div class="psm-video-wrapper">
+          ${vtitle ? `<h3>${vtitle}</h3>` : ""}
+          <iframe width="${vwidth}" height="${vheight}" src="${escapeHtml(vsrc)}" title="${vtitle}"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            referrerpolicy="strict-origin-when-cross-origin" loading="lazy" style="border:0;" allowfullscreen></iframe>
+        </div>\n`;
+
+      // -----------------------------------------------------------------------
+      // #AUDIO
+      // -----------------------------------------------------------------------
       } else if (currentLine.toUpperCase().startsWith("#AUDIO")) {
         var audio = currentLine.split(" ");
-        var src = audio[1];
-        var width = "";
-        var height = "";
+        var asrc = sanitizeUrl(resolveAsset(audio[1] || ""), localMode);
+        if (!asrc) { htmlFile = htmlFile.substring(0, previousHtmlLength); continue; }
+        var aw = "", ah = "";
         for (var j = 2; j < audio.length; j++) {
-          if (audio[j].startsWith("width")) {
-            width = audio[j].split("=")[1];
-          } else if (audio[j].startsWith("height")) {
-            height = audio[j].split("=")[1];
-          }
+          if (audio[j].startsWith("width")) aw = sanitizeDimension(audio[j].split("=")[1]);
+          else if (audio[j].startsWith("height")) ah = sanitizeDimension(audio[j].split("=")[1]);
         }
-        htmlFile += `<audio src="${src}" width="${width}" height="${height}" controls>\n`;
+        htmlFile += `<audio src="${escapeHtml(asrc)}" width="${aw}" height="${ah}" controls preload="metadata"></audio>\n`;
+
+      // -----------------------------------------------------------------------
+      // #PDF
+      // -----------------------------------------------------------------------
       } else if (currentLine.toUpperCase().startsWith("#PDF")) {
         var pdf = currentLine.split(" ");
-        var src = pdf[1];
-        var width = "";
-        var height = "";
+        var psrc = sanitizeUrl(resolveAsset(pdf[1] || ""), localMode);
+        if (!psrc) { htmlFile = htmlFile.substring(0, previousHtmlLength); continue; }
+        var pw = "", ph = "";
         for (var j = 2; j < pdf.length; j++) {
-          if (pdf[j].startsWith("width")) {
-            width = pdf[j].split("=")[1];
-          } else if (pdf[j].startsWith("height")) {
-            height = pdf[j].split("=")[1];
-          }
+          if (pdf[j].startsWith("width")) pw = sanitizeDimension(pdf[j].split("=")[1]);
+          else if (pdf[j].startsWith("height")) ph = sanitizeDimension(pdf[j].split("=")[1]);
         }
-        htmlFile += `<embed src="${src}" width="${width}" height="${height}" type="application/pdf">\n`;
+        htmlFile += `<embed src="${escapeHtml(psrc)}" width="${pw}" height="${ph}" type="application/pdf">\n`;
+
+      // -----------------------------------------------------------------------
+      // #SVG
+      // -----------------------------------------------------------------------
       } else if (currentLine.toUpperCase().startsWith("#SVG")) {
         var svg = currentLine.split(" ");
-        var src = svg[1];
-        var width = "";
-        var height = "";
+        var ssrc = sanitizeUrl(resolveAsset(svg[1] || ""), localMode);
+        if (!ssrc) { htmlFile = htmlFile.substring(0, previousHtmlLength); continue; }
+        var sw = "", sh = "";
         for (var j = 2; j < svg.length; j++) {
-          if (svg[j].startsWith("width")) {
-            width = svg[j].split("=")[1];
-          } else if (svg[j].startsWith("height")) {
-            height = svg[j].split("=")[1];
-          }
+          if (svg[j].startsWith("width")) sw = sanitizeDimension(svg[j].split("=")[1]);
+          else if (svg[j].startsWith("height")) sh = sanitizeDimension(svg[j].split("=")[1]);
         }
-        htmlFile += `<img src="${src}" width="${width}" height="${height}" class="img object fit-cover">\n`;
+        htmlFile += `<img src="${escapeHtml(ssrc)}" width="${sw}" height="${sh}" class="img object-fit-cover" loading="lazy" decoding="async">\n`;
+
+      // -----------------------------------------------------------------------
+      // #MAP
+      // -----------------------------------------------------------------------
       } else if (currentLine.toUpperCase().startsWith("#MAP")) {
         var map = currentLine.split(" ");
-        var src = map[1];
-        var width = "";
-        var height = "";
+        var msrc = sanitizeUrl(map[1] || "");
+        if (!msrc) { htmlFile = htmlFile.substring(0, previousHtmlLength); continue; }
+        var mw = "", mh = "";
         for (var j = 2; j < map.length; j++) {
-          if (map[j].startsWith("width")) {
-            width = map[j].split("=")[1];
-          } else if (map[j].startsWith("height")) {
-            height = map[j].split("=")[1];
-          }
+          if (map[j].startsWith("width")) mw = sanitizeDimension(map[j].split("=")[1]);
+          else if (map[j].startsWith("height")) mh = sanitizeDimension(map[j].split("=")[1]);
         }
-        htmlFile += `<iframe src="${src}" width="${width}" height="${height}" allowfullscreen></iframe>\n`;
+        htmlFile += `<iframe src="${escapeHtml(msrc)}" width="${mw}" height="${mh}" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" style="border:0;" allowfullscreen></iframe>\n`;
+
+      // -----------------------------------------------------------------------
+      // #ACCORDION … #ENDACCORDION
+      // -----------------------------------------------------------------------
       } else if (currentLine.toUpperCase().startsWith("#ACCORDION")) {
-        // #accordion Medios de pago
-        // #O Tarjeta de crédito
-        //    Puedes pagar con tarjeta de crédito Visa, Mastercard o American Express.
-        //   #EL https://gestionciudad.com lg-es="Gestión Ciudad" lg-en="City Management" lg-fr="Gestion de la ville" target=_blank
-        // #O Tarjeta de débito
-        //    Puedes pagar con tarjeta de débito Visa o Mastercard.
-        // #O Transferencia bancaria
-        //    Puedes realizar una transferencia bancaria a la cuenta de Gestión Ciudad.
-        // #O PayPal
-        //    Puedes pagar con tu cuenta de PayPal.
-        // #O Apple Pay
-        //    Puedes pagar con Apple Pay desde tu dispositivo Apple.
-        //    
-        //   - Necesitas tener una cuenta de Apple.
-        //   - Necesitas tener un dispositivo Apple.
-        //   - Necesitas tener una tarjeta de crédito o débito.
-                
-        // #ENDACCORDION
-
-        logger.info(`Parsing accordion ${currentLine}`);
-        // We need get the #ENdACCORDION to get all the content
+        logger.info(`Parsing accordion: ${currentLine.substring(0, 60)}`);
         var accordionOptions = [];
-        var dataFromThisLine = data.substring(data.indexOf(currentLine));
-        var endAccordion = dataFromThisLine.indexOf("#ENDACCORDION");
-        var accordionContent = dataFromThisLine.substring(0, endAccordion);
-        // remove the first line as it is the title of the accordion
-        accordionContent = accordionContent.split("\n").slice(1).join("\n");
+        var accordionBlocks = [];
+        var inlineContent = currentLine.split("\n").slice(1).join("\n");
+        if (inlineContent && inlineContent.trim()) accordionBlocks.push(inlineContent);
 
-        // now we can split by #O
-        var accordionLines = accordionContent.split("#O");
-        for (var j = 0; j < accordionLines.length; j++) {
-          // the first line is the title, the rest are the content
-          var optionTitle = accordionLines[j].split("\n")[0];
-          if(optionTitle === "" || !optionTitle) {
-            continue;
+        var scanIndex = i + 1;
+        var accordionEndIndex = i;
+        var foundAccordionEnd = false;
+        while (scanIndex < lines.length) {
+          var block = lines[scanIndex] || "";
+          var endIndex = block.toUpperCase().indexOf("#ENDACCORDION");
+          if (endIndex !== -1) {
+            accordionBlocks.push(block.substring(0, endIndex));
+            accordionEndIndex = scanIndex;
+            foundAccordionEnd = true;
+            break;
           }
-          var optionText = accordionLines[j].split("\n").slice(1).join("\n");
+          accordionBlocks.push(block);
+          accordionEndIndex = scanIndex;
+          scanIndex++;
+        }
+
+        var accordionContent = accordionBlocks.join("\n\n").trim();
+        var optionRegex = /(^|\n)#O[ \t]+([^\n]*)([\s\S]*?)(?=(\n#O[ \t]+|\n#ENDACCORDION\b|$))/g;
+        var optionMatch;
+        while ((optionMatch = optionRegex.exec(accordionContent)) !== null) {
+          var optionTitle = (optionMatch[2] || "").trim();
+          if (!optionTitle) continue;
+          var optionText = (optionMatch[3] || "").replace(/^\n/, "");
           var optionId = idFromString(optionTitle);
-          // check if the id already exists
           if (accordionIds.includes(optionId)) {
-            // add a number at the end of the id
             var count = 1;
-            while (accordionIds.includes(`${optionId}${count}`)) {
-              count++;
-            }
+            while (accordionIds.includes(`${optionId}${count}`)) count++;
             optionId = `${optionId}${count}`;
           }
           accordionIds.push(optionId);
-          accordionOptions.push(`<div class="psm-accordion-option" id="psm-accordion-${optionId}" >\n
-              <div class="psm-accordion-option-title" 
-                  id="psm-accordion-option-title-${optionId}"
-                  onclick="
-                    document.getElementById('psm-accordion-option-${optionId}-content').classList.toggle('active');
-                    document.getElementById('psm-accordion-option-title-${optionId}').classList.toggle('active');
-                    ">
-                  ${optionTitle}</div>\n              
-              <div class="psm-accordion-option-content"  id="psm-accordion-option-${optionId}-content">\n
-                ${psmdocParser(optionText)}\n
-              </div>\n
-          </div>\n`);
-
-          // var optionContent = accordionLines[j].split(":");
-          // if (optionContent.length !== 2) {
-          //   logger.error(`Option content ${optionContent} is not valid`);
-          //   continue;
-          // }
-          // var optionTitle = optionContent[0];
-          // var optionText = optionContent[1];
-          // var optionId = idFromString(optionTitle);
-          // // check if the id already exists
-          // if (accordionIds.includes(optionId)) {
-          //   // add a number at the end of the id
-          //   var count = 1;
-          //   while (accordionIds.includes(`${optionId}${count}`)) {
-          //     count++;
-          //   }
-          //   optionId = `${optionId}${count}`;
-          // }
-          // accordionIds.push(optionId);
-
-          // htmlFile += `<div class="psm-accordion-option" id="psm-accordion-${optionId}" >\n
-          //     <div class="psm-accordion-option-title" 
-          //         id="psm-accordion-option-title-${optionId}"
-          //         onclick="
-          //           document.getElementById('psm-accordion-option-${optionId}-content').classList.toggle('active');
-          //           document.getElementById('psm-accordion-option-title-${optionId}').classList.toggle('active');
-          //           ">
-          //         ${optionTitle}</div>\n              
-          //     <div class="psm-accordion-option-content"  id="psm-accordion-option-${optionId}-content">\n
-          //       ${inlineParser(optionText)}\n
-          //     </div>\n
-          // </div>\n`;
-          
+          accordionOptions.push(
+            `<div class="psm-accordion-option" id="psm-accordion-${optionId}">
+              <div class="psm-accordion-option-title" id="psm-accordion-option-title-${optionId}"
+                onclick="document.getElementById('psm-accordion-option-${optionId}-content').classList.toggle('active');document.getElementById('psm-accordion-option-title-${optionId}').classList.toggle('active');">
+                ${inlineParser(optionTitle)}</div>
+              <div class="psm-accordion-option-content" id="psm-accordion-option-${optionId}-content">
+                ${psmdocParser(optionText, lang, options)}
+              </div>
+            </div>`
+          );
         }
 
-        // Text after #accordion is the title of the accordion
-        var title = currentLine.split("\n")[0].split(" ").slice(1).join(" ");
-        htmlFile += `<div class="psm-accordion-wrapper">\n
-        <details open>\n
-        <summary>${title}</summary>\n`;
+        if (!accordionOptions.length) {
+          htmlFile = htmlFile.substring(0, previousHtmlLength);
+          if (foundAccordionEnd && accordionEndIndex > i) i = accordionEndIndex;
+          continue;
+        }
+
+        var accTitle = currentLine.split("\n")[0].split(" ").slice(1).join(" ");
+        htmlFile += `<div class="psm-accordion-wrapper">
+        <details open>
+        <summary>${inlineParser(accTitle)}</summary>\n`;
         htmlFile += accordionOptions.join("\n");
         htmlFile += "</details>\n</div>\n";
-        // advance the index to the end of the accordion if lines[i] start or end with #ENDACCORDION
-        while (i < lines.length && !lines[i].startsWith("#ENDACCORDION") && !lines[i].endsWith("#ENDACCORDION")) {
-          console.log(`Skipping line ${lines[i]}`);
-          i++;
-        }
+        if (foundAccordionEnd && accordionEndIndex > i) i = accordionEndIndex;
       }
+
+    // -------------------------------------------------------------------------
+    // Listas
+    // -------------------------------------------------------------------------
     } else if (currentLine.startsWith("-")) {
-      var listItems = currentLine.split(`-`);
+      var listItems = currentLine.split("-");
       htmlFile += "<ul>\n";
       for (var j = 0; j < listItems.length; j++) {
         var lineHTML = inlineParser(listItems[j]);
-        if (lineHTML.length > 0) {
-          htmlFile += `<li>${lineHTML}</li>\n`;
-        }
+        if (lineHTML.length > 0) htmlFile += `<li>${lineHTML}</li>\n`;
       }
       htmlFile += "</ul>\n";
+
+    // -------------------------------------------------------------------------
+    // Párrafo
+    // -------------------------------------------------------------------------
     } else {
       htmlFile += `<p>${inlineParser(currentLine)}</p>\n`;
     }
-  } // end for loop
+  }
+
   return htmlFile;
 };
 

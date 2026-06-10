@@ -1,0 +1,12 @@
+{
+  "title": "PSMDoc Demo",
+  "description": "Demo local para build y sync",
+  "keywords": "psmdoc,demo,sync",
+  "author": "Equipo Docs",
+  "robots": "index,follow",
+  "auto-index": "true",
+  "font": "https://fonts.googleapis.com/css?family=Roboto:400,700&display=swap",
+  "languages": ["es", "en"],
+  "version": "1.0.0",
+  "logo": "images/logo.png"
+}

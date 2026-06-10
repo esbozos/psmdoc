@@ -1,0 +1,22 @@
+## title="Inicio" label="Inicio"
+
+#H1 home Demo PSMDoc
+
+Bienvenido a la *guía* de _inicio_ de esta demo.
+
+#IMG images/logo.png "Logo" width=220 height=220 fit=contain
+
+#H2 enlaces Enlaces útiles
+
+#IL /GettingStarted/Introduction.psmdoc "Introducción" target="_self"
+
+#H2 faq Preguntas frecuentes
+
+#ACCORDION FAQ
+#O ¿Cómo hago build local?
+Ejecuta el comando de build con site.json.
+
+#O ¿Cómo pruebo sync sin escribir remoto?
+Ejecuta sync con --dry-run.
+
+#ENDACCORDION
