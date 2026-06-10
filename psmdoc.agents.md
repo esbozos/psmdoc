@@ -2,6 +2,28 @@
 
 Plantilla base para agentes IA que crean documentación .psmdoc y operan el CLI público de PSMDoc.
 
+## Instalación del CLI
+
+```bash
+npm install -g @prioritysupport.mobi/psmdoc
+```
+
+Versión actual publicada: **1.0.6**
+
+Verificar que quedó instalado:
+
+```bash
+which psmdoc
+```
+
+Si no está disponible (entornos nvm/volta), usar:
+
+```bash
+npm link
+```
+
+desde la raíz del repositorio clonado.
+
 ## Rol del agente
 
 Eres un agente técnico experto en PSMDoc.
@@ -31,28 +53,49 @@ Build local:
 psmdoc build <site.json> [output]
 ```
 
-Sync remoto:
+Sync contra servidor (flujo recomendado: primero dry-run, luego real):
 
 ```bash
-psmdoc sync --dir <dir> --project-id <id> --client-secret <secret> [opciones]
+# 1. Simular primero
+psmdoc sync \
+  --dir ./docs \
+  --project-id TU_PROJECT_ID \
+  --client-secret "TU_PROJECT_KEY" \
+  --base-url "https://psmdoc.gestionciudad.com" \
+  --dry-run --verbose
+
+# 2. Sync real
+psmdoc sync \
+  --dir ./docs \
+  --project-id TU_PROJECT_ID \
+  --client-secret "TU_PROJECT_KEY" \
+  --base-url "https://psmdoc.gestionciudad.com" \
+  --verbose
 ```
 
 Opciones útiles de sync:
 
-- --base-url https://psmdoc.gestionciudad.com
-- --flush
-- --version 1.2.0
-- --version +
-- --dry-run
-- --verbose
+- `--base-url` URL del servidor (default: https://psmdoc.gestionciudad.com)
+- `--flush` archiva remoto y recrea desde local (requiere confirmación del usuario)
+- `--version 1.2.0` fija versión exacta
+- `--version +` incrementa patch automáticamente
+- `--dry-run` simula sin cambios remotos
+- `--verbose` muestra detalle por archivo
 
 Ejemplo real con la demo incluida en este repo:
 
-- Build:
+```bash
+# Build
 psmdoc build docs/site.json docs/build/html
 
-- Simulación de sync remoto:
-psmdoc sync --dir ./docs --project-id 123 --client-secret "TU_PROJECT_KEY" --dry-run --verbose
+# Simulación de sync remoto
+psmdoc sync \
+  --dir ./docs \
+  --project-id 16 \
+  --client-secret "TU_PROJECT_KEY" \
+  --base-url "https://psmdoc.gestionciudad.com" \
+  --dry-run --verbose
+```
 
 ## Estructura recomendada del proyecto documental
 
@@ -117,11 +160,12 @@ No agregues markdown externo ni explicaciones fuera del contenido .psmdoc.
 
 Usa este prompt para ejecutar sincronización:
 
-Sincroniza la carpeta [ruta] con el proyecto remoto [id] usando psmdoc sync.
-Primero ejecuta --dry-run y muestra resumen.
-Luego ejecuta sync real sin --dry-run.
-Si se solicita versión, usa --version [valor].
-Si se solicita reset completo, usa --flush y deja constancia de que se archivó antes.
+Sincroniza la carpeta [ruta] con el proyecto remoto [id] en https://psmdoc.gestionciudad.com.
+Primero ejecuta --dry-run --verbose y reporta el delta (crear/actualizar/sin cambios).
+Si el usuario aprueba, ejecuta sync real sin --dry-run.
+Si se solicita versión, usa --version [valor] o --version + para bump patch.
+Si se solicita reset completo, confirma con el usuario antes de usar --flush.
+Siempre termina reportando: archivos creados/actualizados, assets subidos, versión final, errores.
 
 ## Checklist de validación antes de entregar
 

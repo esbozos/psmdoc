@@ -5,22 +5,32 @@ CLI público para:
 - Generar HTML local desde archivos .psmdoc
 - Sincronizar documentación local contra servicio remoto (API)
 
-## Estado
-
-Proyecto en desarrollo activo. El comando sync y el parser siguen evolucionando.
-
 ## Instalación
 
 ```bash
 npm install -g @prioritysupport.mobi/psmdoc
 ```
 
-Uso local del repositorio:
+Version actual: **1.0.6**
+
+Verifica que el comando esté disponible:
 
 ```bash
-npm install
-node src/index.js
+psmdoc --help 2>&1 || echo "Listo"
 ```
+
+Uso local desde el repositorio:
+
+```bash
+git clone https://github.com/esbozos/psmdoc.git
+cd psmdoc
+npm install
+npm link
+```
+
+## Estado
+
+Proyecto en desarrollo activo. El comando sync y el parser siguen evolucionando.
 
 ## Comandos CLI
 
@@ -108,19 +118,59 @@ Notas:
 
 ## Ejecución rápida con demo incluida
 
-Este repositorio ya incluye una carpeta demo lista en docs/.
+Este repositorio incluye una carpeta demo lista en `docs/`.
 
-Build local de la demo:
+Build local:
 
+```bash
 psmdoc build docs/site.json docs/build/html
+```
 
-Sync de prueba (sin escribir remoto):
+Simulación de sync remoto (sin cambios):
 
-psmdoc sync --dir ./docs --project-id 123 --client-secret "TU_PROJECT_KEY" --dry-run --verbose
+```bash
+psmdoc sync \
+  --dir ./docs \
+  --project-id TU_PROJECT_ID \
+  --client-secret "TU_PROJECT_KEY" \
+  --base-url "https://psmdoc.gestionciudad.com" \
+  --dry-run --verbose
+```
 
-Si quieres publicar cambios reales:
+Sync real:
 
-psmdoc sync --dir ./docs --project-id 123 --client-secret "TU_PROJECT_KEY" --verbose
+```bash
+psmdoc sync \
+  --dir ./docs \
+  --project-id TU_PROJECT_ID \
+  --client-secret "TU_PROJECT_KEY" \
+  --base-url "https://psmdoc.gestionciudad.com" \
+  --verbose
+```
+
+Para actualizar versión al sincronizar:
+
+```bash
+psmdoc sync \
+  --dir ./docs \
+  --project-id TU_PROJECT_ID \
+  --client-secret "TU_PROJECT_KEY" \
+  --base-url "https://psmdoc.gestionciudad.com" \
+  --version + \
+  --verbose
+```
+
+Para resetear completamente el remoto desde local:
+
+```bash
+psmdoc sync \
+  --dir ./docs \
+  --project-id TU_PROJECT_ID \
+  --client-secret "TU_PROJECT_KEY" \
+  --base-url "https://psmdoc.gestionciudad.com" \
+  --flush \
+  --verbose
+```
 
 ## Soporte de assets locales
 
@@ -214,28 +264,50 @@ Ejecuta psmdoc sync con project-id y client-secret.
 #ENDACCORDION
 ```
 
-## Endpoints remotos usados por sync
+## Servidor compatible
 
-- /api/project/sync/manifest/
-- /api/project/sync/apply/
-- /api/project/sync/delete/
-- /api/project/sync/upload-asset/
-- /api/project/sync/archive/
-- /api/project/sync/version/
+El comando sync funciona contra cualquier instancia del backend PSMDoc que tenga los endpoints de sincronización habilitados.
 
-Importante:
+Servidor oficial: https://psmdoc.gestionciudad.com
 
-- El comando sync requiere que estos endpoints estén desplegados en el backend remoto.
-- Si recibes 404 en /api/project/sync/manifest/, el servidor aún no tiene el módulo sync publicado.
+Endpoints que usa el CLI (automático, no requiere configuración manual):
 
-Headers de autenticación:
+- POST /api/project/sync/manifest/
+- POST /api/project/sync/apply/
+- POST /api/project/sync/delete/
+- POST /api/project/sync/upload-asset/
+- POST /api/project/sync/archive/
+- POST /api/project/sync/version/
+
+Headers de autenticación enviados en cada request:
 
 - X-Project-Id
 - X-Client-Secret
 
+### Dónde obtener las credenciales
+
+1. Inicia sesión en el servidor PSMDoc.
+2. Entra a tu proyecto → copia el **Project ID** (número) y el **Project Key** (client-secret).
+
+### Verificar conectividad antes del primer sync
+
+```bash
+curl -s -o /dev/null -w "%{http_code}" \
+  -X POST https://psmdoc.gestionciudad.com/api/project/sync/manifest/ \
+  -H "X-Project-Id: TU_PROJECT_ID" \
+  -H "X-Client-Secret: TU_PROJECT_KEY"
+```
+
+Respuestas esperadas:
+
+- 200 → todo OK, listo para sync
+- 401 → credenciales incorrectas
+- 404 → servidor sin módulo sync habilitado
+
 ## Scripts de desarrollo
 
-- npm run parse -> node src/index.js
+- `npm run parse` → `node src/index.js`
+- `npm link` → instala el comando `psmdoc` globalmente desde el repo local
 
 ## Licencia
 
