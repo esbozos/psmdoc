@@ -210,8 +210,11 @@ export const syncProject = async (opts) => {
       content = rewriteAssetRefs(content, assetMap);
     }
     const { dirPath, name } = splitRelPath(f.relPath);
+    /** @type {"create"|"update"} */
+    const action = flush ? "create" : (f.remoteId ? "update" : "create");
     fileOps.push({
-      action: f.remoteId ? "update" : "create",
+      // En --flush el remoto se vacía, así que siempre debemos recrear.
+      action,
       relPath: f.relPath,
       name,
       dirPath,
